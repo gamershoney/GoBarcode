@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"gobarcode/excel"
 
 	_ "gobarcode/excel"
 
@@ -12,7 +13,8 @@ import (
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	WorkBook *excel.LabelInfo
 }
 
 // NewApp creates a new App application struct
@@ -31,11 +33,20 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-func (a *App) SelectFile() {
+func (a *App) SelectFile() *excel.LabelInfo {
 	fname, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Select a Spreadsheet to open..."})
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil
 	}
+
+	label := excel.GetWorkBookInfo(fname)
 	fmt.Println(fname)
+	a.WorkBook = label
+	return label
+}
+
+func (a *App) GetHeaders(hr int) ([]string, error) {
+	a.WorkBook.GetHeaderRowValues(hr)
+	return a.WorkBook.HeaderRowValues, a.WorkBook.Err
 }
