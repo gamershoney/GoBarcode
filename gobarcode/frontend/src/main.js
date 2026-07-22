@@ -24,7 +24,7 @@ async function SetHeader() {
   const text = document.getElementById("headerinput").value;
   try {
     const headerinfo = await go.GetHeaders(Number(text))
-    for (let index = 0; index < headerinfo; index++) {
+    for (let index = 0; index < headerinfo.length; index++) {
       console.log("reading row: ", index + 1)
       console.log(headerinfo[index])
 

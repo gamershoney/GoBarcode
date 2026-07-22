@@ -18,15 +18,13 @@ type LabelInfo struct {
 	HeaderRow         int            `json:"header_row"`
 	HeaderCol         string         `json:"header_col"`
 	HeaderRowValues   []string       `json:"header_row_values"`
-	Err               error          `json:"error"`
 }
 
-func GetWorkBookInfo(name string) *LabelInfo {
+func GetWorkBookInfo(name string) (*LabelInfo, error) {
 	li := &LabelInfo{fname: name}
 	f, err := excelize.OpenFile(name)
 	if err != nil {
-		li.Err = err
-		return li
+		return li, err
 	}
 	defer f.Close()
 	li.Sheetmap = f.GetSheetMap()
@@ -35,39 +33,36 @@ func GetWorkBookInfo(name string) *LabelInfo {
 	li.SelectedSheetName = li.Sheetmap[li.SelectedSheet]
 	rows, err := f.Rows(li.Sheetmap[li.SelectedSheet])
 	if err != nil {
-		li.Err = err
-
-		return li
+		return li, err
 	}
 	defer rows.Close()
 	if rows.Next() {
 		cols, err := rows.Columns()
 		if err != nil {
-			li.Err = err
-			return li
+			return li, err
 		}
 		li.HeaderRowValues = cols
 	}
-	return li
+	return li, err
 }
 
-func (li *LabelInfo) GetHeaderRowValues(hr int) *LabelInfo {
+func (li *LabelInfo) GetHeaderRowValues(hr int) (*LabelInfo, error) {
+	var err error
 	if li.SelectedSheetName == "" {
-		li.Err = errors.New("error: missing sheet name")
-		return li
+		err = errors.New("error: missing sheet name")
+		return nil, err
 	}
 	if li.fname == "" {
-		li.Err = errors.New("error: no selected file")
+		err = errors.New("error: no selected file")
+		return nil, err
 	}
 	file, err := excelize.OpenFile(li.fname)
 	if err != nil {
-		li.Err = err
-		return li
+		return nil, err
 	}
 	rows, err := file.Rows(li.SelectedSheetName)
 	if err != nil {
-		li.Err = err
-		return li
+		return nil, err
 	}
 	fmt.Println("reading rows")
 	defer rows.Close()
@@ -76,14 +71,14 @@ func (li *LabelInfo) GetHeaderRowValues(hr int) *LabelInfo {
 		if currentrow == hr {
 			cols, err := rows.Columns()
 			if err != nil {
-				li.Err = err
+				return nil, err
 			}
 			li.HeaderRowValues = cols
-			return li
+			return li, err
 		}
 		currentrow++
 	}
 	fmt.Println("could not find row")
-	li.Err = errors.New("error: row not found")
-	return li
+	err = errors.New("error: row not found")
+	return li, err
 }
