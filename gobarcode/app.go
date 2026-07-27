@@ -15,38 +15,58 @@ import (
 type App struct {
 	ctx      context.Context
 	WorkBook *excel.LabelInfo
+	Layout   *Layout
 }
 
-// NewApp creates a new App application struct
+// NewApp creates an App instance for the Wails application.
 func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
+// startup stores the Wails application context for later runtime calls.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name
+// Greet returns a greeting for the provided name.
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-func (a *App) SelectFile() *excel.LabelInfo {
+// SelectFile prompts the user to choose a workbook and loads its sheet metadata.
+func (a *App) SelectFile() (*excel.LabelInfo, error) {
 	fname, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Select a Spreadsheet to open..."})
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 
-	label := excel.GetWorkBookInfo(fname)
+	label, err := excel.GetWorkBookInfo(fname)
+	if err != nil {
+		return nil, err
+	}
 	fmt.Println(fname)
 	a.WorkBook = label
-	return label
+	return label, err
 }
 
+// GetHeaders loads and returns the cell values from the requested header row.
 func (a *App) GetHeaders(hr int) ([]string, error) {
-	a.WorkBook.GetHeaderRowValues(hr)
-	return a.WorkBook.HeaderRowValues, a.WorkBook.Err
+	_, err := a.WorkBook.GetHeaderRowValues(hr)
+	return a.WorkBook.HeaderRowValues, err
+}
+
+// SetColumns selects the workbook columns containing UPC and title values.
+func (a *App) SetColumns(upc string, title string) error {
+	err := a.WorkBook.SetColumns(upc, title)
+	return err
+}
+
+func (a *App) SetLayout(l Layout) error {
+	layout := &l
+	if err := layout.ValidateLayout(); err != nil {
+		return err
+	}
+	a.Layout = layout
+	return nil
 }

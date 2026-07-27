@@ -11,6 +11,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// main configures and starts the Wails desktop application.
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()

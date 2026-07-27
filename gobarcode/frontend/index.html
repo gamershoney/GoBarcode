@@ -4,25 +4,122 @@
 <head>
   <meta charset="UTF-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>gobarcode</title>
+  <title>GoBarcode Label Designer</title>
 </head>
 
 <body>
   <div id="app">
-    <div>
-      <button id="filebtn">
-        Pick File
-      </button>
+    <header class="app-header">
       <div>
-        <p id="sheetname"></p>
+        <p class="eyebrow">GoBarcode</p>
+        <h1>Label Designer</h1>
       </div>
-      <div>
-        <label for="headerrow">Header Row</label>
-        <input type="number" id="headerinput" name="headerrow" />
-        <button id="btnsetRow">Set Row</button>
-      </div>
+      <p id="editor-status" class="status" role="status">Ready</p>
+    </header>
 
-    </div>
+    <main class="app-layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Spreadsheet</h2>
+          <button id="filebtn" class="button button-primary" type="button">Choose spreadsheet</button>
+          <p id="sheetname" class="sheet-name">No spreadsheet selected</p>
+
+          <div class="field">
+            <label for="headerinput">Header row</label>
+            <div class="field-with-button">
+              <input type="number" id="headerinput" name="headerrow" value="1" min="1" />
+              <button id="btnsetRow" class="button" type="button">Load</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="header-1-select">UPC column</label>
+            <select name="header-1-select" id="header-1-select">
+              <option value="">Load a header row first</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="header-2-select">Title column</label>
+            <select name="header-2-select" id="header-2-select">
+              <option value="">Load a header row first</option>
+            </select>
+          </div>
+
+          <button id="submitbtn" class="button" type="button">Use selected columns</button>
+        </section>
+
+        <section class="panel">
+          <h2>Output</h2>
+          <div class="property-grid">
+            <div class="field">
+              <label for="page-width">Page width (in)</label>
+              <input id="page-width" type="number" min="0.01" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="page-height">Page height (in)</label>
+              <input id="page-height" type="number" min="0.01" step="0.01" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="layout-ppi">Resolution (PPI)</label>
+            <input id="layout-ppi" type="number" min="1" step="1" />
+          </div>
+          <p id="page-size-summary" class="field-help">Pixel dimensions are calculated automatically.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Element</h2>
+          <p id="no-selection" class="empty-message">Select an element on the label to edit it.</p>
+          <div id="element-properties" class="properties" hidden>
+            <div class="selected-element-summary">
+              <span id="property-kind" class="element-kind"></span>
+              <span id="property-source" class="element-source"></span>
+            </div>
+            <div class="property-grid">
+              <div class="field">
+                <label for="property-x">X</label>
+                <input id="property-x" type="number" min="0" />
+              </div>
+              <div class="field">
+                <label for="property-y">Y</label>
+                <input id="property-y" type="number" min="0" />
+              </div>
+              <div class="field">
+                <label for="property-width">Width</label>
+                <input id="property-width" type="number" min="90" />
+              </div>
+              <div class="field">
+                <label for="property-height">Height</label>
+                <input id="property-height" type="number" min="50" />
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace" aria-label="Barcode label editor">
+        <div class="toolbar">
+          <span id="layout-summary" class="layout-summary">Barcode + title layout</span>
+          <div class="toolbar-actions">
+            <button id="save-layout" class="button button-primary" type="button">Apply layout</button>
+            <button id="reset-layout" class="button button-quiet" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="canvas-stage">
+          <div>
+            <div class="canvas-ruler">
+              <span id="label-width-ruler">4 in</span>
+              <span>Label preview</span>
+              <span id="label-height-ruler">2.4 in</span>
+            </div>
+            <div id="label-canvas" class="label-canvas" tabindex="0" aria-label="Label design surface"></div>
+            <p class="canvas-help">Drag elements to position them. Use the blue corner to resize.</p>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
   <script src="./src/main.js" type="module"></script>
 </body>
