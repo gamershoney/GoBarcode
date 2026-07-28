@@ -8,8 +8,14 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// TitleUpcMap is a map with a key for the Title and the Upc for the value
-type TitleUpcMap map[string]string
+// LabelData contains the spreadsheet values needed to generate one label.
+// Index records the label's position after incomplete spreadsheet rows are
+// removed so concurrent work can be assembled in the original order.
+type LabelData struct {
+	Index int    `json:"index"`
+	Title string `json:"title"`
+	UPC   string `json:"upc"`
+}
 
 type LabelInfo struct {
 	fname             string
@@ -22,7 +28,7 @@ type LabelInfo struct {
 	TitleCol          string         `json:"header_col"`
 	UPCCol            string         `json:"upc_col"`
 	HeaderRowValues   []string       `json:"header_row_values"`
-	TitleUpcMap       TitleUpcMap
+	Labels            []LabelData    `json:"labels"`
 }
 
 // GetWorkBookInfo opens a workbook and returns metadata for its initially selected sheet.
@@ -102,10 +108,10 @@ func (li *LabelInfo) SetColumns(upc string, title string) error {
 	return nil
 }
 
-// CreateLabelMap maps each title to its UPC using the selected sheet and columns.
+// CreateLabelMap loads title and UPC pairs in spreadsheet order.
 func (li *LabelInfo) CreateLabelMap() error {
 	if li.TitleCol == "" || li.UPCCol == "" {
-		return errors.New("error: both column names must be set before creating map")
+		return errors.New("error: both column names must be set before loading labels")
 	}
 	if li.HeaderRow < 1 {
 		return errors.New("error: header row must be set before creating map")
@@ -128,7 +134,7 @@ func (li *LabelInfo) CreateLabelMap() error {
 
 	titleIndex := -1
 	upcIndex := -1
-	labelmap := make(map[string]string)
+	labels := make([]LabelData, 0)
 	currentIndex := 1
 	for rows.Next() {
 		row, err := rows.Columns()
@@ -153,7 +159,11 @@ func (li *LabelInfo) CreateLabelMap() error {
 				currentIndex++
 				continue
 			}
-			labelmap[row[titleIndex]] = row[upcIndex]
+			labels = append(labels, LabelData{
+				Index: len(labels),
+				Title: row[titleIndex],
+				UPC:   row[upcIndex],
+			})
 		}
 
 		currentIndex++
@@ -165,6 +175,6 @@ func (li *LabelInfo) CreateLabelMap() error {
 		return errors.New("error: header row not found")
 	}
 
-	li.TitleUpcMap = labelmap
+	li.Labels = labels
 	return nil
 }

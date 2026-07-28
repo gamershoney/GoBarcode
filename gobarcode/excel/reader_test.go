@@ -35,7 +35,7 @@ func createTestWorkbook(t *testing.T, rows [][]interface{}) string {
 	return path
 }
 
-// TestCreateLabelMap verifies that data rows are mapped and incomplete rows are skipped.
+// TestCreateLabelMap verifies that data rows remain ordered and incomplete rows are skipped.
 func TestCreateLabelMap(t *testing.T) {
 	path := createTestWorkbook(t, [][]interface{}{
 		{"Label export"},
@@ -43,6 +43,7 @@ func TestCreateLabelMap(t *testing.T) {
 		{"First", "00123"},
 		{"Second"},
 		{"Third", "00456"},
+		{"First", "00789"},
 	})
 	info := &LabelInfo{
 		fname:             path,
@@ -56,12 +57,13 @@ func TestCreateLabelMap(t *testing.T) {
 		t.Fatalf("CreateLabelMap() error = %v", err)
 	}
 
-	want := TitleUpcMap{
-		"First": "00123",
-		"Third": "00456",
+	want := []LabelData{
+		{Index: 0, Title: "First", UPC: "00123"},
+		{Index: 1, Title: "Third", UPC: "00456"},
+		{Index: 2, Title: "First", UPC: "00789"},
 	}
-	if !reflect.DeepEqual(info.TitleUpcMap, want) {
-		t.Errorf("TitleUpcMap = %#v, want %#v", info.TitleUpcMap, want)
+	if !reflect.DeepEqual(info.Labels, want) {
+		t.Errorf("Labels = %#v, want %#v", info.Labels, want)
 	}
 }
 

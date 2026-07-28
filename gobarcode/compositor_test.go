@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"gobarcode/barcode"
+	"gobarcode/excel"
 	"strings"
 	"testing"
 )
@@ -80,6 +83,13 @@ func TestValidateLayout(t *testing.T) {
 			wantError: "title placement exceeds image height",
 		},
 		{
+			name: "title is shorter than font",
+			change: func(layout *Layout) {
+				layout.TitlePlacement.Height = 12
+			},
+			wantError: "title height must be at least 13 pixels",
+		},
+		{
 			name: "image is wider than page",
 			change: func(layout *Layout) {
 				layout.PageWidth = 3
@@ -114,5 +124,46 @@ func TestValidateLayout(t *testing.T) {
 				t.Fatalf("ValidateLayout() error = %q, want error containing %q", err, test.wantError)
 			}
 		})
+	}
+}
+
+func TestCompositeLabelsPreservesInputOrder(t *testing.T) {
+	layout := validTestLayout()
+	labels := []excel.LabelData{
+		{Index: 0, Title: "First", UPC: "001234"},
+		{Index: 1, Title: "Second", UPC: "004567"},
+		{Index: 2, Title: "First", UPC: "007890"},
+	}
+	app := &App{
+		WorkBook: &excel.LabelInfo{Labels: labels},
+		Layout:   &layout,
+	}
+
+	images, err := app.CompositeLabels()
+	if err != nil {
+		t.Fatalf("CompositeLabels() error = %v", err)
+	}
+	if len(images) != len(labels) {
+		t.Fatalf("CompositeLabels() returned %d images, want %d", len(images), len(labels))
+	}
+
+	generator := barcode.NewGenerator(
+		layout.BarcodePlacement.Width,
+		layout.BarcodePlacement.Height,
+	)
+	for index, label := range labels {
+		barcodeImage, err := generator.GenerateBarcode(label.UPC)
+		if err != nil {
+			t.Fatalf("GenerateBarcode(%q) error = %v", label.UPC, err)
+		}
+		want := layout.DrawLabel(barcodeImage)
+		layout.DrawTitle(want, label.Title)
+
+		if images[index] == nil {
+			t.Fatalf("image at index %d is nil", index)
+		}
+		if !bytes.Equal(images[index].Pix, want.Pix) {
+			t.Errorf("image at index %d does not match label %q", index, label.Title)
+		}
 	}
 }

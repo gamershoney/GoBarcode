@@ -58,8 +58,10 @@ func (a *App) GetHeaders(hr int) ([]string, error) {
 
 // SetColumns selects the workbook columns containing UPC and title values.
 func (a *App) SetColumns(upc string, title string) error {
-	err := a.WorkBook.SetColumns(upc, title)
-	return err
+	if err := a.WorkBook.SetColumns(upc, title); err != nil {
+		return err
+	}
+	return a.WorkBook.CreateLabelMap()
 }
 
 func (a *App) SetLayout(l Layout) error {
