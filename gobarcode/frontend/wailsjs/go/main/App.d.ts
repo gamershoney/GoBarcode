@@ -15,3 +15,5 @@ export function SelectFile():Promise<excel.LabelInfo>;
 export function SetColumns(arg1:string,arg2:string):Promise<void>;
 
 export function SetLayout(arg1:main.Layout):Promise<void>;
+
+export function SetSaveLocation():Promise<string>;

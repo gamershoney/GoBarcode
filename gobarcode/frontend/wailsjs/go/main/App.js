@@ -25,3 +25,7 @@ export function SetColumns(arg1, arg2) {
 export function SetLayout(arg1) {
   return window['go']['main']['App']['SetLayout'](arg1);
 }
+
+export function SetSaveLocation() {
+  return window['go']['main']['App']['SetSaveLocation']();
+}

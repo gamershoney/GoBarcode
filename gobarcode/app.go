@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gobarcode/excel"
 
@@ -48,6 +49,21 @@ func (a *App) SelectFile() (*excel.LabelInfo, error) {
 	fmt.Println(fname)
 	a.WorkBook = label
 	return label, err
+}
+
+func (a *App) SetSaveLocation() (string, error) {
+	sname, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		DefaultFilename: "Barcodes.pdf",
+		Title:           "Set the location for your file...",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if sname == "" {
+		return "", errors.New("error: no filepath set")
+	}
+	return sname, err
 }
 
 // GetHeaders loads and returns the cell values from the requested header row.

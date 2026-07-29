@@ -42,6 +42,8 @@ const layoutSummary = document.getElementById('layout-summary');
 const pageSizeSummary = document.getElementById('page-size-summary');
 const labelWidthRuler = document.getElementById('label-width-ruler');
 const labelHeightRuler = document.getElementById('label-height-ruler');
+const saveLocationButton = document.getElementById('save-location-button');
+const saveLocationDisplay = document.getElementById('save-location');
 const propertyInputs = {
   origin_x: document.getElementById('property-x'),
   origin_y: document.getElementById('property-y'),
@@ -57,6 +59,7 @@ const outputInputs = {
 let layout = createDefaultLayout();
 let selectedPlacement = null;
 let interaction = null;
+let saveLocation = '';
 
 filebtn.addEventListener('click', selectFile);
 setRow.addEventListener('click', setHeader);
@@ -65,6 +68,7 @@ upcSelect.addEventListener('change', renderLayout);
 titleSelect.addEventListener('change', renderLayout);
 document.getElementById('save-layout').addEventListener('click', applyLayout);
 document.getElementById('reset-layout').addEventListener('click', resetLayout);
+saveLocationButton.addEventListener('click', selectSaveLocation);
 canvas.addEventListener('pointerdown', handleCanvasPointerDown);
 window.addEventListener('pointermove', handlePointerMove);
 window.addEventListener('pointerup', endInteraction);
@@ -152,6 +156,21 @@ async function submitColumns() {
     setStatus('Spreadsheet columns saved');
   } catch (error) {
     setStatus(error, true);
+  }
+}
+
+async function selectSaveLocation() {
+  saveLocationButton.disabled = true;
+  try {
+    const location = await go.SetSaveLocation();
+    saveLocation = location;
+    saveLocationDisplay.textContent = location;
+    saveLocationDisplay.title = location;
+    setStatus('Save location selected');
+  } catch (error) {
+    setStatus(error, true);
+  } finally {
+    saveLocationButton.disabled = false;
   }
 }
 

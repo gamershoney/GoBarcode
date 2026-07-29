@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"gobarcode/barcode"
 	"image"
@@ -71,13 +72,13 @@ func (l *Layout) ValidateLayout() error {
 		)
 	}
 
-	pagePixelWidth := float64(l.PageWidth) * float64(l.PPI)
-	pagePixelHeight := float64(l.PageHeight) * float64(l.PPI)
-	if float64(l.ImageWidth) > pagePixelWidth {
-		return fmt.Errorf("error: image width %d exceeds page width %.0f pixels", l.ImageWidth, pagePixelWidth)
+	pagePixelWidth := l.PagePixelWidth()
+	pagePixelHeight := l.PagePixelHeight()
+	if l.ImageWidth > pagePixelWidth {
+		return fmt.Errorf("error: image width %d exceeds page width %d pixels", l.ImageWidth, pagePixelWidth)
 	}
-	if float64(l.ImageHeight) > pagePixelHeight {
-		return fmt.Errorf("error: image height %d exceeds page height %.0f pixels", l.ImageHeight, pagePixelHeight)
+	if l.ImageHeight > pagePixelHeight {
+		return fmt.Errorf("error: image height %d exceeds page height %d pixels", l.ImageHeight, pagePixelHeight)
 	}
 
 	return nil
@@ -172,14 +173,23 @@ func truncateText(face font.Face, text string, maxWidth int) string {
 	return result.String()
 }
 
-func (l *Layout) CalcPage() (a float64, cols int, rows int) {
-	imageArea := l.ImageHeight * l.ImageWidth
-	pageArea := l.PageHeight * l.PageWidth
-	fit := pageArea / float32(imageArea)
-	count := math.Floor(float64(fit))
-	a = count
+func (l *Layout) PagePixelWidth() int {
+	return int(math.Round(float64(l.PageWidth) * float64(l.PPI)))
+}
 
-	return
+func (l *Layout) PagePixelHeight() int {
+	return int(math.Round(float64(l.PageHeight) * float64(l.PPI)))
+}
+
+func (l *Layout) CalcPage() (capacity int, cols int, rows int) {
+	if l.ImageWidth <= 0 || l.ImageHeight <= 0 {
+		return 0, 0, 0
+	}
+
+	cols = l.PagePixelWidth() / l.ImageWidth
+	rows = l.PagePixelHeight() / l.ImageHeight
+	capacity = cols * rows
+	return capacity, cols, rows
 }
 
 func (a *App) CompositeLabels() ([]*image.RGBA, error) {
@@ -232,23 +242,91 @@ func (a *App) CompositeLabels() ([]*image.RGBA, error) {
 }
 
 type Page struct {
-	Page    int `json:"page"`
-	Columns int
-	Rows    int
-	Images  []*image.RGBA
-	Error   error `json:"error"`
+	Page      int `json:"page"`
+	Columns   int
+	Rows      int
+	Images    []*image.RGBA
+	PageImage *image.RGBA
+	Error     error `json:"error"`
 }
 
 func (l *Layout) BuildPage(page *Page) {
-	canvas := image.NewRGBA(image.Rect(0, 0, int(l.PageWidth)*l.PPI, l.PageHeight*float32(l.PPI)))
-	rect := image.Rect(0, 0, l.ImageWidth, l.ImageHeight)
-	for _, image := range page.Images {
-		// draw.Draw(canvas,rect, image, sp image.Point, op draw.Op)
+	if page == nil {
+		return
 	}
+	if page.Columns <= 0 || page.Rows <= 0 {
+		page.Error = errors.New("error: page must have at least one row and column")
+		return
+	}
+
+	pageBounds := image.Rect(0, 0, l.PagePixelWidth(), l.PagePixelHeight())
+	canvas := image.NewRGBA(pageBounds)
+	draw.Draw(canvas, pageBounds, image.NewUniform(color.White), image.Point{}, draw.Src)
+
+	capacity := page.Columns * page.Rows
+	for index, img := range page.Images {
+		if index >= capacity {
+			page.Error = fmt.Errorf("error: page %d contains more images than its capacity of %d", page.Page, capacity)
+			break
+		}
+		if img == nil {
+			page.Error = fmt.Errorf("error: page %d contains a nil image at index %d", page.Page, index)
+			break
+		}
+
+		currentCol := index % page.Columns
+		currentRow := index / page.Columns
+		rect := image.Rect(
+			currentCol*l.ImageWidth,
+			currentRow*l.ImageHeight,
+			(currentCol+1)*l.ImageWidth,
+			(currentRow+1)*l.ImageHeight,
+		)
+		draw.Draw(canvas, rect, img, img.Bounds().Min, draw.Over)
+	}
+	page.PageImage = canvas
 }
 
-func (l *Layout) DrawPages(imgs []*image.RGBA) error {
-	count := l.CalcPage()
+func (l *Layout) DrawPages(imgs []*image.RGBA) ([]*Page, error) {
+	if len(imgs) == 0 {
+		return []*Page{}, nil
+	}
 
-	return nil
+	capacity, cols, rows := l.CalcPage()
+	if capacity <= 0 {
+		return nil, errors.New("error: page dimensions cannot fit a label")
+	}
+	for index, img := range imgs {
+		if img == nil {
+			return nil, fmt.Errorf("error: image %d is nil", index)
+		}
+	}
+
+	pageCount := (len(imgs) + capacity - 1) / capacity
+	var wg sync.WaitGroup
+	pGroup := make([]*Page, pageCount)
+	for index := range pageCount {
+		starting := index * capacity
+		final := min(starting+capacity, len(imgs))
+		page := &Page{
+			Page:    index,
+			Columns: cols,
+			Rows:    rows,
+			Images:  imgs[starting:final],
+		}
+		pGroup[index] = page
+
+		wg.Go(func() {
+			l.BuildPage(page)
+		})
+	}
+	wg.Wait()
+
+	for _, page := range pGroup {
+		if page.Error != nil {
+			return pGroup, page.Error
+		}
+	}
+
+	return pGroup, nil
 }

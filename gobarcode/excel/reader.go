@@ -29,6 +29,7 @@ type LabelInfo struct {
 	UPCCol            string         `json:"upc_col"`
 	HeaderRowValues   []string       `json:"header_row_values"`
 	Labels            []LabelData    `json:"labels"`
+	SaveLocation      string         `json:"save_location"`
 }
 
 // GetWorkBookInfo opens a workbook and returns metadata for its initially selected sheet.

@@ -136,7 +136,8 @@
 }
 
 #filebtn,
-#submitbtn {
+#submitbtn,
+#save-location-button {
   width: 100%;
 }
 
@@ -145,6 +146,15 @@
   margin: 9px 0 16px;
   color: #91a3ba;
   font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.save-location {
+  min-height: 18px;
+  margin: 8px 0 0;
+  color: #91a3ba;
+  font-size: 12px;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 

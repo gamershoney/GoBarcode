@@ -25,6 +25,7 @@ export namespace excel {
 	    upc_col: string;
 	    header_row_values: string[];
 	    labels: LabelData[];
+	    save_location: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new LabelInfo(source);
@@ -40,6 +41,7 @@ export namespace excel {
 	        this.upc_col = source["upc_col"];
 	        this.header_row_values = source["header_row_values"];
 	        this.labels = this.convertValues(source["labels"], LabelData);
+	        this.save_location = source["save_location"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
