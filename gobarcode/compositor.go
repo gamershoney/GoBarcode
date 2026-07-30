@@ -1,16 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"gobarcode/barcode"
 	"image"
 	"image/color"
 	"image/draw"
+	"image/png"
 	"math"
 	"strings"
 	"sync"
 
+	"codeberg.org/go-pdf/fpdf"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
@@ -329,4 +332,57 @@ func (l *Layout) DrawPages(imgs []*image.RGBA) ([]*Page, error) {
 	}
 
 	return pGroup, nil
+}
+
+func EncodeImage(p *Page) (*bytes.Reader, error) {
+	var b bytes.Buffer
+	err := png.Encode(&b, p.PageImage)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(b.Bytes()), err
+}
+
+func (l *Layout) CreatePDF(pgs []*Page) (*fpdf.Fpdf, error) {
+	opts := &fpdf.InitType{
+		Size: fpdf.SizeType{
+			Wd: float64(l.PageWidth),
+			Ht: float64(l.PageHeight),
+		},
+		UnitStr:        fpdf.UnitInch,
+		OrientationStr: fpdf.OrientationPortrait,
+	}
+	pdf := fpdf.NewCustom(opts)
+	for i, p := range pgs {
+		name := fmt.Sprintf("image_%d", i)
+		img, err := EncodeImage(p)
+		if err != nil {
+			return nil, err
+		}
+		pdf.AddPage()
+		pdf.RegisterImageOptionsReader(
+			name,
+			fpdf.ImageOptions{
+				ImageType: "PNG",
+			},
+			img,
+		)
+
+		pdf.ImageOptions(name,
+			0,
+			0,
+			opts.Size.Wd,
+			opts.Size.Ht,
+			false,
+			fpdf.ImageOptions{
+				ImageType: "PNG",
+			},
+			0,
+			"")
+		p.PageImage = nil
+		pgs[i] = nil
+
+	}
+	pgs = nil
+	return pdf, nil
 }
