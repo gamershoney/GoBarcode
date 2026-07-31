@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"gobarcode/excel"
-
-	_ "gobarcode/excel"
+	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	_ "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -57,6 +57,12 @@ func (a *App) SetSaveLocation() (string, error) {
 	sname, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: "Barcodes.pdf",
 		Title:           "Set the location for your file...",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "PDF Files (*.pdf)",
+				Pattern:     "*.pdf",
+			},
+		},
 	})
 	if err != nil {
 		return "", err
@@ -65,18 +71,28 @@ func (a *App) SetSaveLocation() (string, error) {
 	if sname == "" {
 		return "", errors.New("error: no filepath set")
 	}
+	if strings.EqualFold(filepath.Ext(sname), ".pdf") {
+		sname += ".pdf"
+	}
+
 	a.SaveLocation = sname
 	return sname, err
 }
 
 // GetHeaders loads and returns the cell values from the requested header row.
 func (a *App) GetHeaders(hr int) ([]string, error) {
+	if a.WorkBook == nil {
+		return nil, errors.New("error: no workbook set")
+	}
 	_, err := a.WorkBook.GetHeaderRowValues(hr)
 	return a.WorkBook.HeaderRowValues, err
 }
 
 // SetColumns selects workbook columns, optional filtering, and missing-UPC behavior.
 func (a *App) SetColumns(upc string, title string, filterCol string, filterText string, skipMissingUPC bool, padOddUPC bool) error {
+	if a.WorkBook == nil {
+		return errors.New("error: no workbook set when setting columns")
+	}
 	if err := a.WorkBook.SetColumns(upc, title, filterCol, filterText, skipMissingUPC, padOddUPC); err != nil {
 		return err
 	}

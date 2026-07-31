@@ -353,6 +353,13 @@ func (l *Layout) DrawPages(imgs []*image.RGBA) ([]*Page, error) {
 
 // EncodeImage encodes a composed page canvas as PNG data for PDF embedding.
 func EncodeImage(p *Page) (*bytes.Reader, error) {
+	if p == nil {
+		return nil, errors.New("error: page is nil")
+	}
+	if p.PageImage == nil {
+		return nil, errors.New("error: page image is nil")
+	}
+
 	var b bytes.Buffer
 	err := png.Encode(&b, p.PageImage)
 	if err != nil {
@@ -364,6 +371,10 @@ func EncodeImage(p *Page) (*bytes.Reader, error) {
 // CreatePDF embeds each composed page image into a physical-size PDF page.
 // It consumes successfully embedded page images to release their raster memory.
 func (l *Layout) CreatePDF(pgs []*Page) (*fpdf.Fpdf, error) {
+	if len(pgs) == 0 {
+		return nil, errors.New("error: no pages to add to PDF")
+	}
+
 	opts := &fpdf.InitType{
 		Size: fpdf.SizeType{
 			Wd: float64(l.PageWidth),
@@ -377,7 +388,7 @@ func (l *Layout) CreatePDF(pgs []*Page) (*fpdf.Fpdf, error) {
 		name := fmt.Sprintf("image_%d", i)
 		img, err := EncodeImage(p)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("encode PDF page %d: %w", i+1, err)
 		}
 		pdf.AddPage()
 		pdf.RegisterImageOptionsReader(
@@ -401,7 +412,7 @@ func (l *Layout) CreatePDF(pgs []*Page) (*fpdf.Fpdf, error) {
 			"")
 
 		if err := pdf.Error(); err != nil {
-			return nil, fmt.Errorf("add PDF page %d %w", i+1, err)
+			return nil, fmt.Errorf("add PDF page %d: %w", i+1, err)
 		}
 		p.PageImage = nil
 		p.Images = nil

@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"image/png"
 	"strings"
 	"testing"
 )
@@ -357,5 +358,124 @@ func TestDrawPagesRejectsNilImage(t *testing.T) {
 	}
 	if pages != nil {
 		t.Errorf("DrawPages() pages = %#v, want nil", pages)
+	}
+}
+
+// TestEncodeImage validates nil inputs and successful PNG encoding.
+func TestEncodeImage(t *testing.T) {
+	tests := []struct {
+		name      string
+		page      *Page
+		wantError string
+	}{
+		{
+			name:      "nil page",
+			page:      nil,
+			wantError: "page is nil",
+		},
+		{
+			name:      "nil page image",
+			page:      &Page{},
+			wantError: "page image is nil",
+		},
+		{
+			name: "valid page image",
+			page: &Page{PageImage: solidTestImage(20, 10, color.RGBA{R: 255, A: 255})},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			encoded, err := EncodeImage(test.page)
+			if test.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), test.wantError) {
+					t.Fatalf("EncodeImage() error = %v, want error containing %q", err, test.wantError)
+				}
+				if encoded != nil {
+					t.Errorf("EncodeImage() reader = %v, want nil", encoded)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("EncodeImage() error = %v", err)
+			}
+			config, err := png.DecodeConfig(encoded)
+			if err != nil {
+				t.Fatalf("encoded PNG could not be decoded: %v", err)
+			}
+			if config.Width != 20 || config.Height != 10 {
+				t.Errorf("encoded PNG size = %dx%d, want 20x10", config.Width, config.Height)
+			}
+		})
+	}
+}
+
+// TestCreatePDF verifies page count, physical dimensions, serialization, and consumed page memory.
+func TestCreatePDF(t *testing.T) {
+	layout := pageTestLayout()
+	first := &Page{
+		PageImage: solidTestImage(200, 200, color.RGBA{R: 255, A: 255}),
+		Images:    []*image.RGBA{solidTestImage(100, 100, color.RGBA{R: 255, A: 255})},
+	}
+	second := &Page{
+		PageImage: solidTestImage(200, 200, color.RGBA{B: 255, A: 255}),
+		Images:    []*image.RGBA{solidTestImage(100, 100, color.RGBA{B: 255, A: 255})},
+	}
+	pages := []*Page{first, second}
+
+	pdf, err := layout.CreatePDF(pages)
+	if err != nil {
+		t.Fatalf("CreatePDF() error = %v", err)
+	}
+	if got := pdf.PageCount(); got != 2 {
+		t.Errorf("CreatePDF() page count = %d, want 2", got)
+	}
+	width, height := pdf.GetPageSize()
+	if width != 2 || height != 2 {
+		t.Errorf("CreatePDF() page size = %gx%g inches, want 2x2", width, height)
+	}
+	if pages[0] != nil || pages[1] != nil {
+		t.Errorf("CreatePDF() did not release consumed page slice entries")
+	}
+	if first.PageImage != nil || first.Images != nil || second.PageImage != nil || second.Images != nil {
+		t.Errorf("CreatePDF() did not release consumed page raster data")
+	}
+
+	var output bytes.Buffer
+	if err := pdf.Output(&output); err != nil {
+		t.Fatalf("PDF Output() error = %v", err)
+	}
+	if !bytes.HasPrefix(output.Bytes(), []byte("%PDF-")) {
+		t.Errorf("PDF output does not begin with a PDF header")
+	}
+	if !bytes.Contains(output.Bytes(), []byte("%%EOF")) {
+		t.Errorf("PDF output does not contain an EOF marker")
+	}
+}
+
+// TestCreatePDFRejectsInvalidPages verifies empty and nil-image pages return errors.
+func TestCreatePDFRejectsInvalidPages(t *testing.T) {
+	layout := pageTestLayout()
+	tests := []struct {
+		name      string
+		pages     []*Page
+		wantError string
+	}{
+		{name: "empty pages", pages: nil, wantError: "no pages"},
+		{name: "nil page", pages: []*Page{nil}, wantError: "page is nil"},
+		{name: "nil page image", pages: []*Page{{}}, wantError: "page image is nil"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pdf, err := layout.CreatePDF(test.pages)
+			if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("CreatePDF() error = %v, want error containing %q", err, test.wantError)
+			}
+			if pdf != nil {
+				t.Errorf("CreatePDF() PDF = %v, want nil", pdf)
+			}
+		})
 	}
 }
