@@ -46,6 +46,35 @@
             </select>
           </div>
 
+          <div class="field">
+            <label for="filter-column-select">Filter column (optional)</label>
+            <select name="filter-column-select" id="filter-column-select">
+              <option value="">No filter</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="filter-text">Filter value</label>
+            <input id="filter-text" type="text" placeholder="Exact value to include" disabled />
+            <p class="field-help">Matching ignores capitalization and surrounding spaces.</p>
+          </div>
+
+          <div class="field">
+            <label class="checkbox-control" for="skip-missing-upc">
+              <input id="skip-missing-upc" type="checkbox" />
+              <span>Skip rows with missing UPC codes</span>
+            </label>
+            <p class="field-help">When unchecked, a missing UPC stops generation with the spreadsheet row number.</p>
+          </div>
+
+          <div class="field">
+            <label class="checkbox-control" for="pad-odd-upc">
+              <input id="pad-odd-upc" type="checkbox" checked />
+              <span>Pad odd-length UPCs with a leading zero</span>
+            </label>
+            <p class="field-help">Required by Interleaved 2 of 5 when Excel omits a leading zero.</p>
+          </div>
+
           <button id="submitbtn" class="button" type="button">Use selected columns</button>
         </section>
 
@@ -68,8 +97,8 @@
           <p id="page-size-summary" class="field-help">Pixel dimensions are calculated automatically.</p>
           <div class="field">
             <label for="save-location-button">Save location</label>
-            <button id="save-location-button" class="button" type="button">Choose save folder</button>
-            <p id="save-location" class="save-location">No save folder selected</p>
+            <button id="save-location-button" class="button" type="button">Choose output file</button>
+            <p id="save-location" class="save-location">No output file selected</p>
           </div>
         </section>
 
@@ -107,7 +136,8 @@
         <div class="toolbar">
           <span id="layout-summary" class="layout-summary">Barcode + title layout</span>
           <div class="toolbar-actions">
-            <button id="save-layout" class="button button-primary" type="button">Apply layout</button>
+            <button id="save-layout" class="button" type="button">Apply layout</button>
+            <button id="generate-pdf" class="button button-primary" type="button">Generate PDF</button>
             <button id="reset-layout" class="button button-quiet" type="button">Reset</button>
           </div>
         </div>

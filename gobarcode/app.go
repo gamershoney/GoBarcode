@@ -14,9 +14,10 @@ import (
 
 // App struct
 type App struct {
-	ctx      context.Context
-	WorkBook *excel.LabelInfo
-	Layout   *Layout
+	ctx          context.Context
+	WorkBook     *excel.LabelInfo
+	Layout       *Layout
+	SaveLocation string
 }
 
 // NewApp creates an App instance for the Wails application.
@@ -51,8 +52,9 @@ func (a *App) SelectFile() (*excel.LabelInfo, error) {
 	return label, err
 }
 
+// SetSaveLocation prompts the user for a PDF output path and stores the selection.
 func (a *App) SetSaveLocation() (string, error) {
-	sname, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+	sname, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: "Barcodes.pdf",
 		Title:           "Set the location for your file...",
 	})
@@ -63,6 +65,7 @@ func (a *App) SetSaveLocation() (string, error) {
 	if sname == "" {
 		return "", errors.New("error: no filepath set")
 	}
+	a.SaveLocation = sname
 	return sname, err
 }
 
@@ -72,19 +75,54 @@ func (a *App) GetHeaders(hr int) ([]string, error) {
 	return a.WorkBook.HeaderRowValues, err
 }
 
-// SetColumns selects the workbook columns containing UPC and title values.
-func (a *App) SetColumns(upc string, title string) error {
-	if err := a.WorkBook.SetColumns(upc, title); err != nil {
+// SetColumns selects workbook columns, optional filtering, and missing-UPC behavior.
+func (a *App) SetColumns(upc string, title string, filterCol string, filterText string, skipMissingUPC bool, padOddUPC bool) error {
+	if err := a.WorkBook.SetColumns(upc, title, filterCol, filterText, skipMissingUPC, padOddUPC); err != nil {
 		return err
 	}
 	return a.WorkBook.CreateLabelMap()
 }
 
+// SetLayout validates and stores the label and page layout supplied by the frontend.
 func (a *App) SetLayout(l Layout) error {
 	layout := &l
 	if err := layout.ValidateLayout(); err != nil {
 		return err
 	}
 	a.Layout = layout
+	return nil
+}
+
+// Start generates the labels, composes the pages, and writes the completed PDF.
+func (a *App) Start() error {
+	if a.WorkBook == nil {
+		return errors.New("error: workbook not set")
+	}
+	if a.Layout == nil {
+		return errors.New("error: layout not set")
+	}
+	if a.SaveLocation == "" {
+		return errors.New("error: no save location set")
+	}
+	labels, err := a.CompositeLabels()
+	if err != nil {
+		return err
+	}
+	if len(labels) == 0 {
+		return errors.New("error no labels found or generated")
+	}
+	pages, err := a.Layout.DrawPages(labels)
+	if err != nil {
+		return err
+	}
+	pdf, err := a.Layout.CreatePDF(pages)
+	if err != nil {
+		return err
+	}
+
+	err = pdf.OutputFileAndClose(a.SaveLocation)
+	if err != nil {
+		return err
+	}
 	return nil
 }

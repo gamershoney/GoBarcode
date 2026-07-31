@@ -31,6 +31,10 @@ const setRow = document.getElementById('btnsetRow');
 const headerInput = document.getElementById('headerinput');
 const upcSelect = document.getElementById('header-1-select');
 const titleSelect = document.getElementById('header-2-select');
+const filterColumnSelect = document.getElementById('filter-column-select');
+const filterTextInput = document.getElementById('filter-text');
+const skipMissingUpcInput = document.getElementById('skip-missing-upc');
+const padOddUpcInput = document.getElementById('pad-odd-upc');
 const submitbtn = document.getElementById('submitbtn');
 const canvas = document.getElementById('label-canvas');
 const status = document.getElementById('editor-status');
@@ -44,6 +48,8 @@ const labelWidthRuler = document.getElementById('label-width-ruler');
 const labelHeightRuler = document.getElementById('label-height-ruler');
 const saveLocationButton = document.getElementById('save-location-button');
 const saveLocationDisplay = document.getElementById('save-location');
+const applyLayoutButton = document.getElementById('save-layout');
+const generatePdfButton = document.getElementById('generate-pdf');
 const propertyInputs = {
   origin_x: document.getElementById('property-x'),
   origin_y: document.getElementById('property-y'),
@@ -66,7 +72,9 @@ setRow.addEventListener('click', setHeader);
 submitbtn.addEventListener('click', submitColumns);
 upcSelect.addEventListener('change', renderLayout);
 titleSelect.addEventListener('change', renderLayout);
-document.getElementById('save-layout').addEventListener('click', applyLayout);
+filterColumnSelect.addEventListener('change', updateFilterAvailability);
+applyLayoutButton.addEventListener('click', applyLayout);
+generatePdfButton.addEventListener('click', generatePDF);
 document.getElementById('reset-layout').addEventListener('click', resetLayout);
 saveLocationButton.addEventListener('click', selectSaveLocation);
 canvas.addEventListener('pointerdown', handleCanvasPointerDown);
@@ -127,6 +135,8 @@ async function setHeader() {
     const headers = await go.GetHeaders(row);
     populateHeaderSelect(upcSelect, headers);
     populateHeaderSelect(titleSelect, headers);
+    populateHeaderSelect(filterColumnSelect, headers, 'No filter');
+    updateFilterAvailability();
     renderLayout();
     setStatus(`Loaded ${headers.length} columns from row ${row}`);
   } catch (error) {
@@ -134,14 +144,26 @@ async function setHeader() {
   }
 }
 
-function populateHeaderSelect(select, headers) {
+function populateHeaderSelect(select, headers, emptyOption = '') {
   select.replaceChildren();
+  if (emptyOption) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = emptyOption;
+    select.appendChild(option);
+  }
   headers.forEach((header) => {
     const option = document.createElement('option');
     option.value = header;
     option.textContent = header;
     select.appendChild(option);
   });
+}
+
+function updateFilterAvailability() {
+  const enabled = Boolean(filterColumnSelect.value);
+  filterTextInput.disabled = !enabled;
+  if (!enabled) filterTextInput.value = '';
 }
 
 async function submitColumns() {
@@ -151,9 +173,18 @@ async function submitColumns() {
   }
 
   try {
-    await go.SetColumns(upcSelect.value, titleSelect.value);
+    const filterText = filterTextInput.value.trim();
+    await go.SetColumns(
+      upcSelect.value,
+      titleSelect.value,
+      filterColumnSelect.value,
+      filterText,
+      skipMissingUpcInput.checked,
+      padOddUpcInput.checked,
+    );
     renderLayout();
-    setStatus('Spreadsheet columns saved');
+    const filterApplied = filterColumnSelect.value && filterText;
+    setStatus(filterApplied ? `Spreadsheet filtered by ${filterColumnSelect.value}` : 'Spreadsheet columns saved');
   } catch (error) {
     setStatus(error, true);
   }
@@ -369,6 +400,35 @@ async function applyLayout() {
   } catch (error) {
     setStatus(error, true);
   }
+}
+
+async function generatePDF() {
+  if (!saveLocation) {
+    setStatus('Choose an output file before generating the PDF', true);
+    return;
+  }
+
+  setGenerationBusy(true);
+  try {
+    await go.SetLayout(layout);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    setStatus('Generating PDF…');
+    await go.Start();
+    setStatus(`PDF saved to ${saveLocation}`);
+  } catch (error) {
+    setStatus(error, true);
+  } finally {
+    setGenerationBusy(false);
+  }
+}
+
+function setGenerationBusy(isBusy) {
+  [generatePdfButton, applyLayoutButton, saveLocationButton, filebtn, setRow, submitbtn]
+    .forEach((button) => {
+      button.disabled = isBusy;
+    });
+  generatePdfButton.textContent = isBusy ? 'Generating…' : 'Generate PDF';
+  generatePdfButton.setAttribute('aria-busy', String(isBusy));
 }
 
 function loadLayout() {

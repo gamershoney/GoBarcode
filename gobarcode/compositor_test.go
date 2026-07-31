@@ -11,6 +11,7 @@ import (
 	"testing"
 )
 
+// validTestLayout returns a valid production-sized layout for compositor tests.
 func validTestLayout() Layout {
 	return Layout{
 		ImageHeight: 360,
@@ -33,6 +34,7 @@ func validTestLayout() Layout {
 	}
 }
 
+// TestValidateLayout verifies valid layouts and representative validation failures.
 func TestValidateLayout(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -130,6 +132,7 @@ func TestValidateLayout(t *testing.T) {
 	}
 }
 
+// TestCompositeLabelsPreservesInputOrder verifies concurrent rendering remains deterministic.
 func TestCompositeLabelsPreservesInputOrder(t *testing.T) {
 	layout := validTestLayout()
 	labels := []excel.LabelData{
@@ -171,6 +174,7 @@ func TestCompositeLabelsPreservesInputOrder(t *testing.T) {
 	}
 }
 
+// pageTestLayout returns a compact two-by-two page layout for pagination tests.
 func pageTestLayout() Layout {
 	return Layout{
 		ImageHeight: 100,
@@ -181,12 +185,14 @@ func pageTestLayout() Layout {
 	}
 }
 
+// solidTestImage creates a solid-color image used to identify label placement.
 func solidTestImage(width, height int, fill color.RGBA) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(img, img.Bounds(), image.NewUniform(fill), image.Point{}, draw.Src)
 	return img
 }
 
+// assertPixelColor verifies the color of one pixel in an image.
 func assertPixelColor(t *testing.T, img image.Image, point image.Point, want color.RGBA) {
 	t.Helper()
 
@@ -196,6 +202,7 @@ func assertPixelColor(t *testing.T, img image.Image, point image.Point, want col
 	}
 }
 
+// drawPagesWithoutPanic converts pagination panics into explicit test failures.
 func drawPagesWithoutPanic(t *testing.T, layout *Layout, images []*image.RGBA) (pages []*Page, err error) {
 	t.Helper()
 	defer func() {
@@ -206,6 +213,7 @@ func drawPagesWithoutPanic(t *testing.T, layout *Layout, images []*image.RGBA) (
 	return layout.DrawPages(images)
 }
 
+// TestCalcPageUsesPixelDimensions verifies inch-to-pixel conversion and page capacity.
 func TestCalcPageUsesPixelDimensions(t *testing.T) {
 	layout := validTestLayout()
 
@@ -229,6 +237,7 @@ func TestCalcPageUsesPixelDimensions(t *testing.T) {
 	}
 }
 
+// TestBuildPagePlacesImagesInRowMajorOrder verifies label placement across rows and columns.
 func TestBuildPagePlacesImagesInRowMajorOrder(t *testing.T) {
 	layout := pageTestLayout()
 	red := color.RGBA{R: 255, A: 255}
@@ -262,6 +271,7 @@ func TestBuildPagePlacesImagesInRowMajorOrder(t *testing.T) {
 	assertPixelColor(t, page.PageImage, image.Pt(150, 150), yellow)
 }
 
+// TestDrawPagesSplitsImagesWithoutReordering verifies pagination preserves input order.
 func TestDrawPagesSplitsImagesWithoutReordering(t *testing.T) {
 	layout := pageTestLayout()
 	images := []*image.RGBA{
@@ -307,6 +317,7 @@ func TestDrawPagesSplitsImagesWithoutReordering(t *testing.T) {
 	}
 }
 
+// TestDrawPagesWithNoImagesReturnsNoPages verifies empty input produces an empty result.
 func TestDrawPagesWithNoImagesReturnsNoPages(t *testing.T) {
 	layout := pageTestLayout()
 
@@ -319,6 +330,7 @@ func TestDrawPagesWithNoImagesReturnsNoPages(t *testing.T) {
 	}
 }
 
+// TestDrawPagesRejectsPageThatCannotFitLabel verifies invalid page capacity is rejected.
 func TestDrawPagesRejectsPageThatCannotFitLabel(t *testing.T) {
 	layout := pageTestLayout()
 	layout.ImageWidth = layout.PagePixelWidth() + 1
@@ -335,6 +347,7 @@ func TestDrawPagesRejectsPageThatCannotFitLabel(t *testing.T) {
 	}
 }
 
+// TestDrawPagesRejectsNilImage verifies nil label images are rejected before composition.
 func TestDrawPagesRejectsNilImage(t *testing.T) {
 	layout := pageTestLayout()
 

@@ -8,6 +8,9 @@ GoBarcode is a desktop label-design and barcode-composition application built wi
 
 - Import `.xlsx` workbooks and select the worksheet header row.
 - Choose the spreadsheet columns containing UPC and title values.
+- Optionally include only rows whose selected filter column matches a specified value.
+- Choose whether rows with missing UPC values are skipped or reported as errors.
+- Optionally restore a leading zero to odd-length values for Interleaved 2 of 5 encoding.
 - Preserve spreadsheet order, including rows with duplicate titles.
 - Design labels on an interactive canvas with drag, resize, keyboard positioning, and numeric controls.
 - Configure page dimensions in inches and select the output PPI.

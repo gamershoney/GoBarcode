@@ -3,6 +3,7 @@ module gobarcode
 go 1.25.0
 
 require (
+	codeberg.org/go-pdf/fpdf v0.12.0
 	github.com/boombuler/barcode v1.1.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/xuri/excelize/v2 v2.11.0
@@ -10,7 +11,6 @@ require (
 )
 
 require (
-	codeberg.org/go-pdf/fpdf v0.12.0 // indirect
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

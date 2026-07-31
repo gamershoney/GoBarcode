@@ -4,6 +4,7 @@ package excel
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -17,6 +18,7 @@ type LabelData struct {
 	UPC   string `json:"upc"`
 }
 
+// LabelInfo stores workbook selections and the ordered records used to create labels.
 type LabelInfo struct {
 	fname             string
 	title             string
@@ -27,9 +29,12 @@ type LabelInfo struct {
 	HeaderRow         int            `json:"header_row"`
 	TitleCol          string         `json:"header_col"`
 	UPCCol            string         `json:"upc_col"`
+	FilterCol         string         `json:"filter_col"`
+	FilterText        string         `json:"filter_text"`
+	SkipMissingUPC    bool           `json:"skip_missing_upc"`
+	PadOddUPC         bool           `json:"pad_odd_upc"`
 	HeaderRowValues   []string       `json:"header_row_values"`
 	Labels            []LabelData    `json:"labels"`
-	SaveLocation      string         `json:"save_location"`
 }
 
 // GetWorkBookInfo opens a workbook and returns metadata for its initially selected sheet.
@@ -99,13 +104,17 @@ func (li *LabelInfo) GetHeaderRowValues(hr int) (*LabelInfo, error) {
 	return li, err
 }
 
-// SetColumns selects the header names used for UPC and title values.
-func (li *LabelInfo) SetColumns(upc string, title string) error {
+// SetColumns selects the headers used for UPC, title, and optional row filtering.
+func (li *LabelInfo) SetColumns(upc string, title string, filterCol string, filterText string, skipMissingUPC bool, padOddUPC bool) error {
 	if upc == "" || title == "" {
 		return errors.New("error: missing required text")
 	}
 	li.UPCCol = upc
 	li.TitleCol = title
+	li.FilterCol = strings.TrimSpace(filterCol)
+	li.FilterText = strings.TrimSpace(filterText)
+	li.SkipMissingUPC = skipMissingUPC
+	li.PadOddUPC = padOddUPC
 	return nil
 }
 
@@ -135,6 +144,8 @@ func (li *LabelInfo) CreateLabelMap() error {
 
 	titleIndex := -1
 	upcIndex := -1
+	filterIndex := -1
+	filtering := li.FilterCol != "" && li.FilterText != ""
 	labels := make([]LabelData, 0)
 	currentIndex := 1
 	for rows.Next() {
@@ -151,19 +162,45 @@ func (li *LabelInfo) CreateLabelMap() error {
 				if cell == li.UPCCol {
 					upcIndex = i
 				}
+				if filtering && cell == li.FilterCol {
+					filterIndex = i
+				}
 			}
 			if titleIndex < 0 || upcIndex < 0 {
 				return errors.New("error: title or upc header not found")
 			}
+			if filtering && filterIndex < 0 {
+				return errors.New("error: filter header not found")
+			}
 		} else if currentIndex > li.HeaderRow {
-			if titleIndex >= len(row) || upcIndex >= len(row) {
+			if filtering {
+				if filterIndex >= len(row) || !strings.EqualFold(strings.TrimSpace(row[filterIndex]), li.FilterText) {
+					currentIndex++
+					continue
+				}
+			}
+			if titleIndex >= len(row) {
 				currentIndex++
 				continue
+			}
+			if upcIndex >= len(row) || strings.TrimSpace(row[upcIndex]) == "" {
+				if li.SkipMissingUPC {
+					currentIndex++
+					continue
+				}
+				return fmt.Errorf("error: missing UPC at row %d", currentIndex)
+			}
+			upc := strings.TrimSpace(row[upcIndex])
+			if len(upc)%2 != 0 {
+				if !li.PadOddUPC {
+					return fmt.Errorf("error: UPC at row %d must contain an even number of digits", currentIndex)
+				}
+				upc = "0" + upc
 			}
 			labels = append(labels, LabelData{
 				Index: len(labels),
 				Title: row[titleIndex],
-				UPC:   row[upcIndex],
+				UPC:   upc,
 			})
 		}
 

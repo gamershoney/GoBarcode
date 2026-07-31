@@ -23,9 +23,12 @@ export namespace excel {
 	    header_row: number;
 	    header_col: string;
 	    upc_col: string;
+	    filter_col: string;
+	    filter_text: string;
+	    skip_missing_upc: boolean;
+	    pad_odd_upc: boolean;
 	    header_row_values: string[];
 	    labels: LabelData[];
-	    save_location: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new LabelInfo(source);
@@ -39,9 +42,12 @@ export namespace excel {
 	        this.header_row = source["header_row"];
 	        this.header_col = source["header_col"];
 	        this.upc_col = source["upc_col"];
+	        this.filter_col = source["filter_col"];
+	        this.filter_text = source["filter_text"];
+	        this.skip_missing_upc = source["skip_missing_upc"];
+	        this.pad_odd_upc = source["pad_odd_upc"];
 	        this.header_row_values = source["header_row_values"];
 	        this.labels = this.convertValues(source["labels"], LabelData);
-	        this.save_location = source["save_location"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

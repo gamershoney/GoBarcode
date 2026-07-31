@@ -12,8 +12,10 @@ export function Greet(arg1:string):Promise<string>;
 
 export function SelectFile():Promise<excel.LabelInfo>;
 
-export function SetColumns(arg1:string,arg2:string):Promise<void>;
+export function SetColumns(arg1:string,arg2:string,arg3:string,arg4:string,arg5:boolean,arg6:boolean):Promise<void>;
 
 export function SetLayout(arg1:main.Layout):Promise<void>;
 
 export function SetSaveLocation():Promise<string>;
+
+export function Start():Promise<void>;

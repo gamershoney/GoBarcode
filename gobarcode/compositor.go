@@ -19,6 +19,7 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
+// Placement describes the pixel dimensions and origin of an element on a label.
 type Placement struct {
 	Height  int `json:"height"`
 	Width   int `json:"width"`
@@ -26,10 +27,12 @@ type Placement struct {
 	OriginY int `json:"origin_y"`
 }
 
+// Area returns the placement area in square pixels.
 func (p Placement) Area() int {
 	return (p.Height * p.Width)
 }
 
+// Layout defines the label canvas, element placements, and physical page settings.
 type Layout struct {
 	ImageHeight      int       `json:"image_height"`
 	ImageWidth       int       `json:"image_width"`
@@ -40,11 +43,13 @@ type Layout struct {
 	PPI              int       `json:"ppi"`
 }
 
+// SizeError returns a validation error for a non-positive dimension.
 func SizeError(prop string) error {
 	err := fmt.Errorf("error: %s cannot be 0 or less", prop)
 	return err
 }
 
+// ValidateLayout verifies label dimensions, page settings, and element boundaries.
 func (l *Layout) ValidateLayout() error {
 	if l.ImageHeight <= 0 {
 		return SizeError("image_height")
@@ -87,11 +92,13 @@ func (l *Layout) ValidateLayout() error {
 	return nil
 }
 
+// validPositiveFloat reports whether value is finite and greater than zero.
 func validPositiveFloat(value float32) bool {
 	number := float64(value)
 	return number > 0 && !math.IsNaN(number) && !math.IsInf(number, 0)
 }
 
+// validatePlacement verifies that an element has positive dimensions and fits on the label.
 func (l *Layout) validatePlacement(name string, placement Placement) error {
 	if placement.Height <= 0 {
 		return fmt.Errorf("error: %s height cannot be 0 or less", name)
@@ -117,6 +124,7 @@ func (l *Layout) validatePlacement(name string, placement Placement) error {
 	return nil
 }
 
+// DrawLabel creates a white label canvas and draws the barcode in its configured placement.
 func (l *Layout) DrawLabel(src image.Image) *image.RGBA {
 	labelBounds := image.Rect(0, 0, l.ImageWidth, l.ImageHeight)
 	dst := image.NewRGBA(labelBounds)
@@ -133,6 +141,7 @@ func (l *Layout) DrawLabel(src image.Image) *image.RGBA {
 	return dst
 }
 
+// DrawTitle centers a title within its configured placement on a label image.
 func (l *Layout) DrawTitle(img *image.RGBA, text string) {
 	placement := l.TitlePlacement
 	face := basicfont.Face7x13
@@ -160,6 +169,7 @@ func (l *Layout) DrawTitle(img *image.RGBA, text string) {
 	drwr.DrawString(text)
 }
 
+// truncateText returns the longest prefix of text that fits within maxWidth pixels.
 func truncateText(face font.Face, text string, maxWidth int) string {
 	if font.MeasureString(face, text).Ceil() <= maxWidth {
 		return text
@@ -176,14 +186,17 @@ func truncateText(face font.Face, text string, maxWidth int) string {
 	return result.String()
 }
 
+// PagePixelWidth converts the configured page width from inches to pixels.
 func (l *Layout) PagePixelWidth() int {
 	return int(math.Round(float64(l.PageWidth) * float64(l.PPI)))
 }
 
+// PagePixelHeight converts the configured page height from inches to pixels.
 func (l *Layout) PagePixelHeight() int {
 	return int(math.Round(float64(l.PageHeight) * float64(l.PPI)))
 }
 
+// CalcPage returns the label capacity, columns, and rows available on one page.
 func (l *Layout) CalcPage() (capacity int, cols int, rows int) {
 	if l.ImageWidth <= 0 || l.ImageHeight <= 0 {
 		return 0, 0, 0
@@ -195,6 +208,7 @@ func (l *Layout) CalcPage() (capacity int, cols int, rows int) {
 	return capacity, cols, rows
 }
 
+// CompositeLabels concurrently renders labels while preserving spreadsheet order.
 func (a *App) CompositeLabels() ([]*image.RGBA, error) {
 	type labelResult struct {
 		index int
@@ -244,6 +258,7 @@ func (a *App) CompositeLabels() ([]*image.RGBA, error) {
 	return images, nil
 }
 
+// Page groups label images with their composed page canvas and placement metadata.
 type Page struct {
 	Page      int `json:"page"`
 	Columns   int
@@ -253,6 +268,7 @@ type Page struct {
 	Error     error `json:"error"`
 }
 
+// BuildPage draws a page's labels in row-major order onto a page-sized canvas.
 func (l *Layout) BuildPage(page *Page) {
 	if page == nil {
 		return
@@ -290,6 +306,7 @@ func (l *Layout) BuildPage(page *Page) {
 	page.PageImage = canvas
 }
 
+// DrawPages divides ordered label images into pages and composes their canvases concurrently.
 func (l *Layout) DrawPages(imgs []*image.RGBA) ([]*Page, error) {
 	if len(imgs) == 0 {
 		return []*Page{}, nil
@@ -334,6 +351,7 @@ func (l *Layout) DrawPages(imgs []*image.RGBA) ([]*Page, error) {
 	return pGroup, nil
 }
 
+// EncodeImage encodes a composed page canvas as PNG data for PDF embedding.
 func EncodeImage(p *Page) (*bytes.Reader, error) {
 	var b bytes.Buffer
 	err := png.Encode(&b, p.PageImage)
@@ -343,6 +361,8 @@ func EncodeImage(p *Page) (*bytes.Reader, error) {
 	return bytes.NewReader(b.Bytes()), err
 }
 
+// CreatePDF embeds each composed page image into a physical-size PDF page.
+// It consumes successfully embedded page images to release their raster memory.
 func (l *Layout) CreatePDF(pgs []*Page) (*fpdf.Fpdf, error) {
 	opts := &fpdf.InitType{
 		Size: fpdf.SizeType{
@@ -379,10 +399,15 @@ func (l *Layout) CreatePDF(pgs []*Page) (*fpdf.Fpdf, error) {
 			},
 			0,
 			"")
+
+		if err := pdf.Error(); err != nil {
+			return nil, fmt.Errorf("add PDF page %d %w", i+1, err)
+		}
 		p.PageImage = nil
+		p.Images = nil
 		pgs[i] = nil
 
 	}
-	pgs = nil
+
 	return pdf, nil
 }
