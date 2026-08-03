@@ -71,7 +71,7 @@ func (a *App) SetSaveLocation() (string, error) {
 	if sname == "" {
 		return "", errors.New("error: no filepath set")
 	}
-	if strings.EqualFold(filepath.Ext(sname), ".pdf") {
+	if !strings.EqualFold(filepath.Ext(sname), ".pdf") {
 		sname += ".pdf"
 	}
 

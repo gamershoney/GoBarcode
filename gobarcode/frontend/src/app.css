@@ -181,6 +181,12 @@
   background: #111b27;
 }
 
+.field select {
+  color: #111923;
+  background: #ffffff;
+  color-scheme: light;
+}
+
 .field input:focus,
 .field select:focus {
   border-color: #568cff;
@@ -399,7 +405,7 @@
 .barcode-caption {
   overflow: hidden;
   color: #111;
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-family: "Departure Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 11px;
   line-height: 14px;
   text-align: center;
