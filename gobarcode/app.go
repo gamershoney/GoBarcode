@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	_ "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
